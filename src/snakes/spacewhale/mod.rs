@@ -1,10 +1,13 @@
-use crate::{Aesthetic, SnakeInfo};
+use crate::{
+    aesthetic::HasAesthetic,
+    api::responses::aesthetic::AestheticResponse,
+};
 
 pub struct Spacewhale;
 
-impl SnakeInfo for Spacewhale {
-    fn snake_info() -> Aesthetic {
-        Aesthetic {
+impl HasAesthetic for Spacewhale {
+    fn aesthetic() -> AestheticResponse {
+        AestheticResponse {
             ..Default::default()
         }
     }

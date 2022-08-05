@@ -1,32 +1,14 @@
-use serde::Serialize;
+use crate::api::responses::aesthetic::AestheticResponse;
 
-use self::{colour::Colour, head::Head, tail::Tail};
+mod colour;
+pub use colour::Colour;
 
-pub(super) mod colour;
-pub(super) mod head;
-pub(super) mod snakeinfo;
-pub(super) mod tail;
+mod head;
+pub use head::Head;
 
-#[derive(Serialize)]
-pub struct Aesthetic {
-    pub author: String,
-    pub colour: Colour,
-    pub head: Head,
-    pub tail: Tail,
-}
+mod tail;
+pub use tail::Tail;
 
-impl Default for Aesthetic {
-    fn default() -> Self {
-        let author = env!("CARGO_PKG_AUTHORS")
-            .split(':')
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        Self {
-            author,
-            colour: Default::default(),
-            head: Default::default(),
-            tail: Default::default(),
-        }
-    }
+pub trait HasAesthetic {
+    fn aesthetic() -> AestheticResponse;
 }

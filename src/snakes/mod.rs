@@ -1,1 +1,1 @@
-pub(crate) mod spacewhale;
+pub mod spacewhale;

@@ -1,45 +1,62 @@
 use std::sync::Arc;
 
-use axum::routing::{get, post};
-use axum::{Extension, Json, Router};
-use backwardsnakes::{SnakeInfo, Spacewhale};
+use axum::{
+    routing::{get, post},
+    Extension,
+    Json,
+    Router,
+};
+use battlesnakes::{
+    aesthetic::HasAesthetic,
+    api::{
+        requests::movement::MoveRequest,
+        responses::{
+            aesthetic::AestheticResponse,
+            movement::{Direction, MoveResponse},
+        },
+    },
+    snakes::spacewhale::Spacewhale,
+};
 use color_eyre::Result;
-use serde_json::{json, Value};
 
-async fn root<S>(Extension(_snake): Extension<Arc<S>>) -> Json<Value>
+async fn root<S>(
+    Extension(_snake): Extension<Arc<S>>,
+) -> Json<AestheticResponse>
 where
-    S: SnakeInfo,
+    S: HasAesthetic,
 {
-    Json(json!(S::snake_info()))
+    Json(S::aesthetic())
 }
 
-async fn start<S>(Json(request): Json<Value>, Extension(_snake): Extension<Arc<S>>) -> Json<Value>
-where
-    S: SnakeInfo,
+async fn start<S>(
+    Json(_request): Json<MoveRequest>,
+    Extension(_snake): Extension<Arc<S>>,
+) where
+    S: HasAesthetic,
 {
-    Json(request)
 }
 
 async fn make_move<S>(
-    Json(request): Json<Value>,
+    Json(_request): Json<MoveRequest>,
     Extension(_snake): Extension<Arc<S>>,
-) -> Json<Value>
+) -> Json<MoveResponse>
 where
-    S: SnakeInfo,
+    S: HasAesthetic,
 {
-    Json(request)
+    Json(MoveResponse::new(Direction::Up).with_shout("going up!"))
 }
 
-async fn end<S>(Json(request): Json<Value>, Extension(_snake): Extension<Arc<S>>) -> Json<Value>
-where
-    S: SnakeInfo,
+async fn end<S>(
+    Json(_request): Json<MoveRequest>,
+    Extension(_snake): Extension<Arc<S>>,
+) where
+    S: HasAesthetic,
 {
-    Json(request)
 }
 
 async fn serve<S>(snake: S) -> Result<()>
 where
-    S: SnakeInfo + Sync + Send + 'static,
+    S: HasAesthetic + Sync + Send + 'static,
 {
     let snake = Arc::new(snake);
 
