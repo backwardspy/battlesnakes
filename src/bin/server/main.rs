@@ -6,22 +6,14 @@ use axum::{
     Json,
     Router,
 };
+use battlesnake_game_types::wire_representation;
 use battlesnakes::{
-    aesthetic::HasAesthetic,
-    api::{
-        requests::movement::MoveRequest,
-        responses::{
-            aesthetic::AestheticResponse,
-            movement::{Direction, MoveResponse},
-        },
-    },
+    aesthetic::{Aesthetic, HasAesthetic},
     snakes::spacewhale::Spacewhale,
 };
 use color_eyre::Result;
 
-async fn root<S>(
-    Extension(_snake): Extension<Arc<S>>,
-) -> Json<AestheticResponse>
+async fn root<S>(Extension(_snake): Extension<Arc<S>>) -> Json<Aesthetic>
 where
     S: HasAesthetic,
 {
@@ -29,25 +21,24 @@ where
 }
 
 async fn start<S>(
-    Json(_request): Json<MoveRequest>,
+    Json(_game): Json<wire_representation::Game>,
+    Extension(_snake): Extension<Arc<S>>,
+) where
+    S: HasAesthetic,
+{
+    println!("{:#?}", _game);
+}
+
+async fn make_move<S>(
+    Json(_game): Json<wire_representation::Game>,
     Extension(_snake): Extension<Arc<S>>,
 ) where
     S: HasAesthetic,
 {
 }
 
-async fn make_move<S>(
-    Json(_request): Json<MoveRequest>,
-    Extension(_snake): Extension<Arc<S>>,
-) -> Json<MoveResponse>
-where
-    S: HasAesthetic,
-{
-    Json(MoveResponse::new(Direction::Up).with_shout("going up!"))
-}
-
 async fn end<S>(
-    Json(_request): Json<MoveRequest>,
+    Json(_game): Json<wire_representation::Game>,
     Extension(_snake): Extension<Arc<S>>,
 ) where
     S: HasAesthetic,
