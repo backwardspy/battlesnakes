@@ -1,4 +1,4 @@
-use battlesnake_game_types::wire_representation::Game;
+use battlesnake_game_types::{wire_representation::Game, types::Move};
 
 use crate::{
     snakes::Snake,
@@ -9,18 +9,16 @@ pub struct Spacewhale;
 
 impl Snake for Spacewhale {
     fn aesthetic() -> Aesthetic {
-        todo!()
+        Default::default()
     }
 
-    fn start(game: Game) {
-        todo!()
+    fn start(_game: Game) {
     }
 
-    fn make_move(game: Game) -> Movement {
-        todo!()
+    fn make_move(_game: Game) -> Movement {
+        Movement::new(Move::Up)
     }
 
-    fn end(game: Game) {
-        todo!()
+    fn end(_game: Game) {
     }
 }
