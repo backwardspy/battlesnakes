@@ -11,11 +11,13 @@ use battlesnakes::{
 };
 use color_eyre::Result;
 use hyper::http::Method;
+use tracing::{Level, info};
 
 async fn root<S>() -> response::Json<Aesthetic>
 where
     S: Snake,
 {
+    info!("aesthetic requested");
     response::Json(S::aesthetic())
 }
 
@@ -23,6 +25,7 @@ async fn start<S>(extract::Json(game): extract::Json<Game>)
 where
     S: Snake,
 {
+    info!("game {} started", game.game.id);
     S::start(game);
 }
 
@@ -32,6 +35,7 @@ async fn make_move<S>(
 where
     S: Snake,
 {
+    info!("making move in game {}", game.game.id);
     response::Json(S::make_move(game))
 }
 
@@ -39,6 +43,7 @@ async fn end<S>(extract::Json(game): extract::Json<Game>)
 where
     S: Snake,
 {
+    info!("game {} ended", game.game.id);
     S::end(game);
 }
 
@@ -60,13 +65,20 @@ where
         .layer(cors)
         .layer(trace);
 
-    Ok(axum::Server::bind(&"0.0.0.0:6502".parse()?)
+    let addr = "0.0.0.0:6502";
+    info!("listening on {addr}");
+    Ok(axum::Server::bind(&addr.parse()?)
         .serve(app.into_make_service())
         .await?)
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    color_eyre::install()?;
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .init();
+
     #[cfg(feature = "spacewhale")]
     type S = Spacewhale;
 
