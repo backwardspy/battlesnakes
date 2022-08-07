@@ -1,62 +1,50 @@
-use std::sync::Arc;
-
 use axum::{
     routing::{get, post},
-    Extension,
-    Json,
-    Router,
+    Router, response, extract,
 };
-use battlesnake_game_types::wire_representation;
+use battlesnake_game_types::wire_representation::Game;
 use battlesnakes::{
-    aesthetic::{Aesthetic, HasAesthetic},
-    snakes::spacewhale::Spacewhale,
+    snakes::{Snake, Spacewhale}, wire_representation::{Aesthetic, Movement},
 };
 use color_eyre::Result;
 
-async fn root<S>(Extension(_snake): Extension<Arc<S>>) -> Json<Aesthetic>
+async fn root<S>() -> response::Json<Aesthetic>
 where
-    S: HasAesthetic,
+    S: Snake,
 {
-    Json(S::aesthetic())
+    response::Json(S::aesthetic())
 }
 
-async fn start<S>(
-    Json(_game): Json<wire_representation::Game>,
-    Extension(_snake): Extension<Arc<S>>,
-) where
-    S: HasAesthetic,
-{
-    println!("{:#?}", _game);
-}
-
-async fn make_move<S>(
-    Json(_game): Json<wire_representation::Game>,
-    Extension(_snake): Extension<Arc<S>>,
-) where
-    S: HasAesthetic,
-{
-}
-
-async fn end<S>(
-    Json(_game): Json<wire_representation::Game>,
-    Extension(_snake): Extension<Arc<S>>,
-) where
-    S: HasAesthetic,
-{
-}
-
-async fn serve<S>(snake: S) -> Result<()>
+async fn start<S>(extract::Json(game): extract::Json<Game>)
 where
-    S: HasAesthetic + Sync + Send + 'static,
+    S: Snake,
 {
-    let snake = Arc::new(snake);
+    S::start(game);
+}
 
+async fn make_move<S>(extract::Json(game): extract::Json<Game>) -> response::Json<Movement>
+where
+    S: Snake,
+{
+    response::Json(S::make_move(game))
+}
+
+async fn end<S>(extract::Json(game): extract::Json<Game>)
+where
+    S: Snake,
+{
+    S::end(game);
+}
+
+async fn serve<S>() -> Result<()>
+where
+    S: Snake + Sync + Send + 'static,
+{
     let app = Router::new()
         .route("/", get(root::<S>))
         .route("/start", post(start::<S>))
         .route("/move", post(make_move::<S>))
-        .route("/end", post(end::<S>))
-        .layer(Extension(snake));
+        .route("/end", post(end::<S>));
 
     Ok(axum::Server::bind(&"0.0.0.0:6502".parse()?)
         .serve(app.into_make_service())
@@ -65,10 +53,9 @@ where
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let snake = match env!("SNAKE").to_lowercase().as_str() {
-        "spacewhale" => Spacewhale,
-        _ => panic!("unknown snake"),
-    };
-    serve(snake).await?;
+    #[cfg(feature = "spacewhale")]
+    type S = Spacewhale;
+
+    serve::<S>().await?;
     Ok(())
 }

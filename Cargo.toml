@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 authors = ["backwardspy"]
 
+[features]
+default = ["spacewhale"]
+spacewhale = []
+
 [dependencies]
 axum = "0"
 battlesnake-game-types = "0"
