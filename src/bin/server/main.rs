@@ -9,9 +9,8 @@ use battlesnakes::{
     snakes::{Snake, Spacewhale},
     wire_representation::{Aesthetic, Movement},
 };
-use color_eyre::Result;
-use hyper::http::Method;
-use tracing::{Level, info};
+use hyper::{header, http::Method, StatusCode};
+use tracing::{info, Level};
 
 async fn root<S>() -> response::Json<Aesthetic>
 where
@@ -31,12 +30,14 @@ where
 
 async fn make_move<S>(
     extract::Json(game): extract::Json<Game>,
-) -> response::Json<Movement>
+) -> Result<response::Json<Movement>, StatusCode>
 where
     S: Snake,
 {
     info!("making move in game {}", game.game.id);
-    response::Json(S::make_move(game))
+    Ok(response::Json(
+        S::make_move(game).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+    ))
 }
 
 async fn end<S>(extract::Json(game): extract::Json<Game>)
@@ -47,12 +48,13 @@ where
     S::end(game);
 }
 
-async fn serve<S>() -> Result<()>
+async fn serve<S>() -> color_eyre::Result<()>
 where
     S: Snake + Sync + Send + 'static,
 {
     let cors = tower_http::cors::CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::CONTENT_TYPE])
         .allow_origin(tower_http::cors::Any);
 
     let trace = tower_http::trace::TraceLayer::new_for_http();
@@ -73,11 +75,9 @@ where
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     #[cfg(feature = "spacewhale")]
     type S = Spacewhale;

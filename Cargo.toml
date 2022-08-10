@@ -10,7 +10,7 @@ spacewhale = []
 
 [dependencies]
 axum = "0"
-battlesnake-game-types = "0"
+battlesnake-game-types = { git = "https://github.com/penelopezone/battlesnake-game-types.git" }
 color-eyre = "0"
 hyper = { version = "0", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
