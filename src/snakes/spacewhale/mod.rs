@@ -4,6 +4,7 @@ use battlesnake_game_types::{
         FoodGettableGame,
         HazardQueryableGame,
         HeadGettableGame,
+        HealthGettableGame,
         LengthGettableGame,
         Move,
         NeighborDeterminableGame,
@@ -40,7 +41,8 @@ where
         + YouDeterminableGame
         + NeighborDeterminableGame
         + VictorDeterminableGame
-        + LengthGettableGame,
+        + LengthGettableGame
+        + HealthGettableGame,
 {
     let me = board.you_id();
 
@@ -52,31 +54,43 @@ where
         }
     }
 
+    let other_sids = board
+        .get_snake_ids()
+        .into_iter()
+        .filter(|sid| sid != me)
+        .collect::<Vec<_>>();
+
     let new_head_pos = board.position_from_native(new_head.clone()).to_vector();
-    let closest_food = board
+    let dist_to_food = board
         .get_all_food_as_positions()
         .iter()
         .map(|food| food.sub_vec(new_head_pos).manhattan_length() as i32)
         .min()
         .unwrap_or(0);
 
-    let me_length = board.get_length(me);
-    let next_to_scary_snake = board
-        .get_snake_ids()
+    let me_length = board.get_length_i64(me);
+
+    let length_diff = (other_sids
         .iter()
-        .filter(|sid| *sid != me && board.get_length(sid) >= me_length)
+        .map(|sid| board.get_length_i64(sid))
+        .max()
+        .unwrap_or(me_length)
+        - me_length) as i32;
+
+    let next_to_scary_snake = other_sids
+        .iter()
+        .filter(|sid| board.get_length_i64(sid) >= me_length)
         .map(|sid| board.get_head_as_native_position(sid))
         .any(|head| board.neighbors(new_head).any(|pos| head == pos));
 
-    let next_to_baby_snake = board
-        .get_snake_ids()
+    let next_to_baby_snake = other_sids
         .iter()
-        .filter(|sid| *sid != me && board.get_length(sid) < me_length)
+        .filter(|sid| board.get_length_i64(sid) < me_length)
         .map(|sid| board.get_head_as_native_position(sid))
         .any(|head| board.neighbors(new_head).any(|pos| head == pos));
 
-    -closest_food
-        + (if next_to_scary_snake { -1000 } else { 0 })
+    -dist_to_food - length_diff * 100 + board.get_health_i64(me) as i32
+        - (if next_to_scary_snake { 1000 } else { 0 })
         + (if next_to_baby_snake { 1000 } else { 0 })
 }
 
@@ -90,7 +104,8 @@ where
         + SimulableGame<Instruments, N_SNAKES>
         + RandomReasonableMovesGame
         + VictorDeterminableGame
-        + LengthGettableGame,
+        + LengthGettableGame
+        + HealthGettableGame,
 {
     let you = board.you_id();
     let head = board.get_head_as_native_position(you);
