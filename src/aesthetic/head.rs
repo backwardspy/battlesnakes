@@ -1,3 +1,6 @@
+// clippy bug flags our enums with this lint incorrectly :(
+#![allow(clippy::use_self)]
+
 use serde::Serialize;
 
 #[derive(Serialize)]

@@ -4,9 +4,14 @@ use battlesnake_game_types::{
         FoodGettableGame,
         HazardQueryableGame,
         HeadGettableGame,
+        LengthGettableGame,
         Move,
         NeighborDeterminableGame,
-        SnakeBodyGettableGame,
+        RandomReasonableMovesGame,
+        SimulableGame,
+        SimulatorInstruments,
+        SnakeIDGettableGame,
+        VictorDeterminableGame,
         YouDeterminableGame,
     },
     wire_representation::Game,
@@ -21,33 +26,90 @@ use crate::{
 
 pub struct Spacewhale;
 
-fn score<B>(board: &B, new_head: &B::NativePositionType) -> i32
-where
-    B: FoodGettableGame,
-{
-    0
+#[derive(Debug)]
+struct Instruments {}
+impl SimulatorInstruments for Instruments {
+    fn observe_simulation(&self, _duration: std::time::Duration) {}
 }
 
-fn make_move<B>(board: B) -> Movement
+fn score<B>(board: &B, new_head: &B::NativePositionType) -> i32
+where
+    B: FoodGettableGame
+        + HeadGettableGame
+        + SnakeIDGettableGame
+        + YouDeterminableGame
+        + NeighborDeterminableGame
+        + VictorDeterminableGame
+        + LengthGettableGame,
+{
+    let me = board.you_id();
+
+    if let Some(winner) = board.get_winner() {
+        if winner == *me {
+            return 1000000;
+        } else {
+            return -1000000;
+        }
+    }
+
+    let new_head_pos = board.position_from_native(new_head.clone()).to_vector();
+    let closest_food = board
+        .get_all_food_as_positions()
+        .iter()
+        .map(|food| food.sub_vec(new_head_pos).manhattan_length() as i32)
+        .min()
+        .unwrap_or(0);
+
+    let me_length = board.get_length(me);
+    let next_to_scary_snake = board
+        .get_snake_ids()
+        .iter()
+        .filter(|sid| *sid != me && board.get_length(sid) >= me_length)
+        .map(|sid| board.get_head_as_native_position(sid))
+        .any(|head| board.neighbors(new_head).any(|pos| head == pos));
+
+    let next_to_baby_snake = board
+        .get_snake_ids()
+        .iter()
+        .filter(|sid| *sid != me && board.get_length(sid) < me_length)
+        .map(|sid| board.get_head_as_native_position(sid))
+        .any(|head| board.neighbors(new_head).any(|pos| head == pos));
+
+    -closest_food
+        + (if next_to_scary_snake { -1000 } else { 0 })
+        + (if next_to_baby_snake { 1000 } else { 0 })
+}
+
+fn make_move<B, const N_SNAKES: usize>(board: B) -> Movement
 where
     B: HeadGettableGame
         + YouDeterminableGame
         + HazardQueryableGame
         + NeighborDeterminableGame
-        + FoodGettableGame,
+        + FoodGettableGame
+        + SimulableGame<Instruments, N_SNAKES>
+        + RandomReasonableMovesGame
+        + VictorDeterminableGame
+        + LengthGettableGame,
 {
     let you = board.you_id();
     let head = board.get_head_as_native_position(you);
 
+    let moves = [(you.clone(), Move::all())];
+    let result = board
+        .simulate_with_moves(&Instruments {}, moves.into_iter())
+        .collect::<Vec<_>>();
+
     Movement::new(
-        board
-            .possible_moves(&head)
-            .filter(|(_, new_head)| {
-                !board.position_is_snake_body(new_head.clone())
-                    && !board.is_hazard(new_head)
+        result
+            .iter()
+            .max_by_key(|(action, board)| {
+                let new_head = board
+                    .position_from_native(head.clone())
+                    .add_vec(action.own_move().to_vector());
+                score(board, &board.native_from_position(new_head))
             })
-            .max_by_key(|(_, new_head)| score(&board, new_head))
-            .map(|(direction, _)| direction)
+            .map(|(action, _board)| action.own_move())
             .unwrap_or(Move::Up),
     )
 }
